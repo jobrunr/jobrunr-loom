@@ -1,0 +1,99 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+
+group 'org.jobrunr.plugins'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion(targetJavaVersion)
+}
+
+test {
+    useJUnitPlatform()
+}
+
+assert hasProperty('javaHome'): "Set the property 'javaHome' in your your gradle.properties pointing to a Java 6 or 7 installation"
+assert hasProperty('targetJavaVersion'): "Set the property 'targetJavaVersion' in your your gradle.properties to '1.6' or '1.7'"
+
+def javaExecutablesPath = new File(javaHome, 'bin')
+def javaExecutables = [:].withDefault { execName ->
+    def executable = new File(javaExecutablesPath, execName)
+    assert executable.exists(): "There is no ${execName} executable in ${javaExecutablesPath}"
+    executable
+}
+tasks.withType(AbstractCompile) {
+    options.with {
+        fork = true
+        forkOptions.javaHome = file(javaHome)
+    }
+}
+tasks.withType(Javadoc) {
+    executable = javaExecutables.javadoc
+}
+tasks.withType(Test) {
+    executable = javaExecutables.java
+}
+tasks.withType(JavaExec) {
+    executable = javaExecutables.java
+}
+
+dependencies {
+    implementation 'org.jobrunr:jobrunr:1.0.0-SNAPSHOT'
+    implementation 'org.ow2.asm:asm:9.0-beta'
+    implementation 'com.google.code.gson:gson:2.8.6'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.6.2'
+    testImplementation 'org.awaitility:awaitility:4.0.3'
+    testImplementation 'org.assertj:assertj-core:3.16.1'
+    testImplementation 'ch.qos.logback:logback-classic:1.2.3'
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = 'org.jobrunr.plugins'
+            artifactId = 'jobrunr-loom'
+            version = project.version.replace("v", "")
+            from components.java
+
+            pom {
+                name = 'JobRunr'
+                description = 'A plugin for JobRunr that allows your jobs to be scheduled using Virtual Threads thanks to Project Loom.'
+                url = 'https://github.com/jobrunr/jobrunr'
+                licenses {
+                    license {
+                        name = 'Multi licensed'
+                        url = 'https://github.com/jobrunr/jobrunr/blob/master/License.md'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'rdehuyss'
+                        name = 'Ronald Dehuysser'
+                        email = 'ronald.dehuysser@gmail.com'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/jobrunr/jobrunr.git'
+                    developerConnection = 'scm:git@github.com:jobrunr/jobrunr.git'
+                    url = 'https://github.com/jobrunr/jobrunr.git'
+                }
+
+                versionMapping {
+                    usage('java-runtime'){
+                        fromResolutionResult()
+                    }
+                }
+            }
+        }
+    }
+}
